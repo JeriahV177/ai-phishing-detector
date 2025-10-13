@@ -1,5 +1,5 @@
 const API_BASE = "http://127.0.0.1:5001";
-const USE_MOCK = true; // change to false when backend is ready
+const USE_MOCK = false; // change to false when backend is ready
 
 function mockResponse() {
   return {
