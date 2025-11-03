@@ -2,37 +2,176 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Phishing Detector (MVP)</title>
+  <title>Harpoon 🪝 | AI Phishing Detector</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 900px; }
-    textarea, input[type=url] { width: 100%; padding: 10px; margin: 8px 0; }
-    button { padding: 8px 14px; cursor: pointer; }
-    .badge { display:inline-block; padding:4px 8px; border-radius:8px; font-weight:600; margin-top:8px; }
-    .phishing { background:#ffe5e5; }
-    .safe { background:#e7f7ee; }
-    .code { background:#fafafa; border:1px solid #eee; padding:10px; white-space:pre-wrap; }
-    .muted { color:#777; font-size: 0.9rem; }
-    mark { background: #ffef9f; }
+    /* ---- Base Styles ---- */
+    :root {
+      --bg-dark: #0b0c10;
+      --bg-card: #1f2833;
+      --accent: #66fcf1;
+      --accent2: #45a29e;
+      --text: #c5c6c7;
+      --danger: #ff5c5c;
+      --safe: #46e29a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: radial-gradient(circle at top left, #0b0c10, #000000);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    h2, h3 {
+      color: var(--accent2);
+      margin-top: 32px;
+    }
+
+    label.muted {
+      color: #aaa;
+      font-size: 0.9rem;
+      display: block;
+      margin-top: 12px;
+    }
+
+    textarea, input[type=url] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #14181e;
+      color: var(--text);
+      margin-top: 6px;
+      resize: vertical;
+      font-size: 1rem;
+    }
+
+    textarea:focus, input:focus {
+      outline: 2px solid var(--accent);
+    }
+
+    button {
+      margin-top: 16px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--accent2);
+      color: #fff;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: var(--accent);
+      color: #000;
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .status {
+      margin-left: 12px;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .badge {
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:8px;
+      font-weight:600;
+      margin-top:12px;
+      font-size: 1rem;
+    }
+
+    .badge.phishing {
+      background: var(--danger);
+      color:#fff;
+    }
+
+    .badge.safe {
+      background: var(--safe);
+      color:#000;
+    }
+
+    .code {
+      background:#0d1117;
+      border:1px solid #222;
+      padding:12px;
+      border-radius:8px;
+      white-space:pre-wrap;
+      font-family: monospace;
+      margin-top: 10px;
+    }
+
+    mark {
+      background: #fff176;
+      color: #000;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #777;
+      margin-top: 40px;
+    }
   </style>
 </head>
 <body>
-  <h1>Phishing Detector (MVP)</h1>
-  <label class="muted">Paste email/message text</label>
-  <textarea id="text" rows="10" placeholder="Paste message here..."></textarea>
+  <div class="container">
+    <h1>Harpoon 🪝</h1>
+    <p style="text-align:center; color:#aaa; margin-top:0;">AI-Powered Phishing Detector</p>
 
-  <label class="muted">Or enter a URL</label>
-  <input id="url" type="url" placeholder="https://example.com"/>
+    <label class="muted">Paste email or message text</label>
+    <textarea id="text" rows="8" placeholder="Paste the suspicious message here..."></textarea>
 
-  <button id="btn">Classify</button> <span id="status" class="muted"></span>
+    <label class="muted">Or analyze a URL</label>
+    <input id="url" type="url" placeholder="https://example.com" />
 
-  <h2>Result</h2>
-  <div id="label"></div>
-  <div id="reasons" class="code"></div>
-  <h3>Preview</h3>
-  <div id="preview" class="code"></div>
+    <div style="text-align:center;">
+      <button id="btn">Analyze</button>
+      <span id="status" class="status"></span>
+    </div>
 
-  <!-- Link external JS -->
+    <h2>Result</h2>
+    <div id="label"></div>
+    <div id="reasons" class="code"></div>
+
+    <h3>Message Preview</h3>
+    <div id="preview" class="code"></div>
+
+    <footer>© 2025 Harpoon AI | Detecting the bait before it hooks you 🪝</footer>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
