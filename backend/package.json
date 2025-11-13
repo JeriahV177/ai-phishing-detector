@@ -2,22 +2,24 @@
   "dependencies": {
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "jimp": "^0.16.1",
+    "jsqr": "^1.4.0",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
+    "qrcode-reader": "^1.0.4",
     "tesseract.js": "^6.0.1"
   },
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "server2.js",
-  "devDependencies": {},
+  "main": "server.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "type": "module"
+  "license": "ISC"
 }

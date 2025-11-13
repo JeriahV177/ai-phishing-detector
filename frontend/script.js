@@ -1,67 +1,136 @@
-const API_BASE = "http://127.0.0.1:5001";
-const USE_MOCK = false; // change to false when backend is ready
+// --- Elements ---
+const textForm = document.getElementById("text-form");
+const textInput = document.getElementById("text-input");
+const textResult = document.getElementById("text-result");
+const textPreview = document.getElementById("text-preview");
 
-function mockResponse() {
-  return {
-    label: "Phishing",
-    score: 3,
-    reasons: ["keyword: suspended", "brand_impersonation: paypaI→paypal"],
-    urls: [{url:"https://paypaI.com/login", verdict:"suspicious"}],
-    highlights: [{start:25,end:34,type:"keyword"}]
-  };
+const imageForm = document.getElementById("image-form");
+const imageInput = document.getElementById("image-input");
+const previewImg = document.getElementById("preview-img");
+const imageResult = document.getElementById("image-result");
+const ocrPreview = document.getElementById("ocr-preview");
+
+const qrForm = document.getElementById("qr-form");
+const qrInput = document.getElementById("qr-input");
+const qrPreviewImg = document.getElementById("qr-preview-img");
+const qrResult = document.getElementById("qr-result");
+const qrPreview = document.getElementById("qr-preview");
+
+// --- Helpers ---
+function showLoading(el, message = "Analyzing...") {
+  el.textContent = message;
 }
 
-function applyHighlights(text, ranges){
-  if(!ranges || !ranges.length) return text;
-  let html = "", i = 0;
-  ranges.sort((a,b)=>a.start-b.start);
-  for(const r of ranges){
-    html += escapeHtml(text.slice(i, r.start));
-    html += "<mark>" + escapeHtml(text.slice(r.start, r.end)) + "</mark>";
-    i = r.end;
+function displayTextResult(result, el, previewEl) {
+  let html = `<strong>Label:</strong> ${result.label}<br>`;
+  html += `<strong>Score:</strong> ${result.score}<br>`;
+  html += `<strong>Reasons:</strong><br>`;
+  result.reasons.forEach(r => { html += `- ${r}<br>`; });
+  if (result.extracted_text) previewEl.textContent = result.extracted_text;
+  if (result.urls && result.urls.length > 0) {
+    html += `<strong>Links:</strong><br>`;
+    result.urls.forEach(u => { html += `- <a href="${u.url}" target="_blank">${u.url}</a><br>`; });
   }
-  html += escapeHtml(text.slice(i));
-  return html;
+  el.innerHTML = html;
 }
 
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function displayQRResult(result, el, previewEl) {
+  let html = `<strong>Label:</strong> ${result.label}<br>`;
+  html += `<strong>Score:</strong> ${result.score}<br>`;
+  html += `<strong>Reasons:</strong><br>`;
+  result.reasons.forEach(r => { html += `- ${r}<br>`; });
+  if (result.qr_payload) previewEl.textContent = result.qr_payload;
+  if (result.urls && result.urls.length > 0) {
+    html += `<strong>Links:</strong><br>`;
+    result.urls.forEach(u => { html += `- <a href="${u.url}" target="_blank">${u.url}</a><br>`; });
+  }
+  el.innerHTML = html;
 }
 
-async function classify(){
-  const status = document.getElementById("status");
-  const labelEl = document.getElementById("label");
-  const reasonsEl = document.getElementById("reasons");
-  const previewEl = document.getElementById("preview");
-  const text = document.getElementById("text").value;
-  const url = document.getElementById("url").value;
+// --- Preview Handlers ---
+imageInput.addEventListener("change", () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+  previewImg.src = URL.createObjectURL(file);
+  ocrPreview.textContent = ""; // Clear previous OCR preview
+});
 
-  status.textContent = "Classifying...";
-  labelEl.innerHTML = "";
-  reasonsEl.textContent = "";
-  previewEl.innerHTML = "";
+qrInput.addEventListener("change", () => {
+  const file = qrInput.files[0];
+  if (!file) return;
+  qrPreviewImg.src = URL.createObjectURL(file);
+  qrPreview.textContent = ""; // Clear previous QR preview
+});
+
+// --- Text Form Submission ---
+textForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = textInput.value.trim();
+  if (!text) return alert("Please enter text or URL");
+
+  showLoading(textResult, "Analyzing...");
+  textPreview.textContent = "";
+  try {
+    const res = await fetch("http://localhost:5000/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (data.error) textResult.textContent = `Error: ${data.error}`;
+    else displayTextResult(data, textResult, textPreview);
+  } catch (err) {
+    console.error(err);
+    textResult.textContent = "Error analyzing text.";
+  }
+});
+
+// --- OCR Image Form Submission ---
+imageForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = imageInput.files[0];
+  if (!file) return alert("Please select an image");
+
+  showLoading(imageResult, "Analyzing...");
+  ocrPreview.textContent = "";
+  const formData = new FormData();
+  formData.append("image", file);
 
   try {
-    const data = USE_MOCK ? mockResponse() :
-      await (await fetch(`${API_BASE}/api/classify`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ text, url })
-      })).json();
-
-    const badge = document.createElement("span");
-    badge.className = "badge " + (data.label.toLowerCase());
-    badge.textContent = `${data.label} (score ${data.score})`;
-    labelEl.appendChild(badge);
-
-    reasonsEl.textContent = (data.reasons||[]).map(r=>"• "+r).join("\n");
-    previewEl.innerHTML = applyHighlights(text, data.highlights||[]);
-    status.textContent = "Done.";
-  } catch(err){
-    status.textContent = "Error contacting API.";
+    const res = await fetch("http://localhost:5000/api/classify-image", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) imageResult.textContent = `Error: ${data.error}`;
+    else displayTextResult(data, imageResult, ocrPreview);
+  } catch (err) {
     console.error(err);
+    imageResult.textContent = "Error analyzing image.";
   }
-}
+});
 
-document.getElementById("btn").addEventListener("click", classify);
+// --- QR Code Form Submission ---
+qrForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = qrInput.files[0];
+  if (!file) return alert("Please select an image for QR code");
 
+  showLoading(qrResult, "Analyzing...");
+  qrPreview.textContent = "";
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const res = await fetch("http://localhost:5000/api/classify-qr", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) qrResult.textContent = `Error: ${data.error}`;
+    else displayQRResult(data, qrResult, qrPreview);
+  } catch (err) {
+    console.error(err);
+    qrResult.textContent = "Error analyzing QR code.";
+  }
+});

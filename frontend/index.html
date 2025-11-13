@@ -1,12 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Harpoon 🪝 | AI Phishing Detector</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
 
   <style>
-    /* ---- Base Styles ---- */
     :root {
       --bg-dark: #0b0c10;
       --bg-card: #1f2833;
@@ -22,12 +21,11 @@
     body {
       margin: 0;
       font-family: "Inter", system-ui, sans-serif;
-      background: radial-gradient(circle at top left, #0b0c10, #000000);
+      background: radial-gradient(circle at top left, #0b0c10, #000);
       color: var(--text);
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
       padding: 40px 20px;
     }
 
@@ -45,23 +43,50 @@
       text-align: center;
       color: var(--accent);
       font-weight: 700;
-      letter-spacing: 1px;
       margin-bottom: 8px;
     }
 
-    h2, h3 {
-      color: var(--accent2);
-      margin-top: 32px;
+    h2, h3 { color: var(--accent2); margin-top: 32px; }
+
+    p.muted { color: #aaa; font-size: 0.9rem; }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
     }
 
-    label.muted {
-      color: #aaa;
-      font-size: 0.9rem;
-      display: block;
-      margin-top: 12px;
+    .tab-button {
+      background-color: #334155;
+      border: none;
+      color: #f1f5f9;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: background-color 0.2s;
     }
 
-    textarea, input[type=url] {
+    .tab-button:hover { background-color: #475569; }
+    .tab-button.active {
+      background-color: var(--accent);
+      color: var(--bg-dark);
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+      background-color: var(--bg-card);
+      border-radius: 10px;
+      padding: 2rem;
+      margin-top: 2rem;
+      width: 100%;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    textarea, input[type=url], input[type=file], input[type=text] {
       width: 100%;
       padding: 12px 14px;
       border-radius: 8px;
@@ -71,10 +96,6 @@
       margin-top: 6px;
       resize: vertical;
       font-size: 1rem;
-    }
-
-    textarea:focus, input:focus {
-      outline: 2px solid var(--accent);
     }
 
     button {
@@ -96,46 +117,32 @@
       box-shadow: 0 0 10px var(--accent);
     }
 
-    .status {
-      margin-left: 12px;
-      font-size: 0.9rem;
-      color: #aaa;
-    }
-
-    .badge {
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:8px;
-      font-weight:600;
-      margin-top:12px;
-      font-size: 1rem;
-    }
-
-    .badge.phishing {
-      background: var(--danger);
-      color:#fff;
-    }
-
-    .badge.safe {
-      background: var(--safe);
-      color:#000;
-    }
-
-    .code {
-      background:#0d1117;
-      border:1px solid #222;
-      padding:12px;
-      border-radius:8px;
-      white-space:pre-wrap;
-      font-family: monospace;
+    .result-box {
+      background-color: #0d1117;
+      border: 1px solid #222;
+      padding: 12px;
+      border-radius: 8px;
       margin-top: 10px;
+      white-space: pre-wrap;
+      font-family: monospace;
     }
 
-    mark {
-      background: #fff176;
-      color: #000;
-      border-radius: 2px;
-      padding: 0 2px;
+    .preview {
+      background: #14181e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+
+    .preview img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 2px solid var(--accent);
     }
 
     footer {
@@ -149,29 +156,71 @@
 <body>
   <div class="container">
     <h1>Harpoon 🪝</h1>
-    <p style="text-align:center; color:#aaa; margin-top:0;">AI-Powered Phishing Detector</p>
+    <p class="muted" style="text-align:center; margin-top:0;">AI-Powered Phishing Detector</p>
 
-    <label class="muted">Paste email or message text</label>
-    <textarea id="text" rows="8" placeholder="Paste the suspicious message here..."></textarea>
-
-    <label class="muted">Or analyze a URL</label>
-    <input id="url" type="url" placeholder="https://example.com" />
-
-    <div style="text-align:center;">
-      <button id="btn">Analyze</button>
-      <span id="status" class="status"></span>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-button active" data-tab="text">📝 Text / URL</button>
+      <button class="tab-button" data-tab="ocr">🖼️ OCR Image</button>
+      <button class="tab-button" data-tab="qr">🔳 QR Code</button>
     </div>
 
-    <h2>Result</h2>
-    <div id="label"></div>
-    <div id="reasons" class="code"></div>
+    <!-- TEXT TAB -->
+    <div id="text" class="tab-content" style="display:block;">
+      <h2>Text / URL Analysis</h2>
+      <form id="text-form">
+        <textarea id="text-input" rows="5" placeholder="Paste message or URL here..."></textarea>
+        <button type="submit">Analyze</button>
+      </form>
+      <div id="text-result" class="result-box"></div>
+      <div id="text-preview" class="preview"></div>
+    </div>
 
-    <h3>Message Preview</h3>
-    <div id="preview" class="code"></div>
+    <!-- OCR IMAGE TAB -->
+    <div id="ocr" class="tab-content">
+      <h2>OCR Image Analysis</h2>
+      <form id="image-form">
+        <input type="file" id="image-input" accept="image/*" />
+        <button type="submit">Analyze Image</button>
+      </form>
+      <div class="preview">
+        <img id="preview-img" src="" alt="No image selected" />
+      </div>
+      <div id="image-result" class="result-box"></div>
+      <div id="ocr-preview" class="preview"></div>
+    </div>
+
+    <!-- QR CODE TAB -->
+    <div id="qr" class="tab-content">
+      <h2>QR Code Analysis</h2>
+      <form id="qr-form">
+        <input type="file" id="qr-input" accept="image/*" />
+        <button type="submit">Analyze QR</button>
+      </form>
+      <div class="preview">
+        <img id="qr-preview-img" src="" alt="No image selected" />
+      </div>
+      <div id="qr-result" class="result-box"></div>
+      <div id="qr-preview" class="preview"></div>
+    </div>
 
     <footer>© 2025 Harpoon AI | Detecting the bait before it hooks you 🪝</footer>
   </div>
 
   <script src="script.js"></script>
+  <script>
+    // --- Tab switching ---
+    const tabButtons = document.querySelectorAll(".tab-button");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        tabContents.forEach(tc => tc.style.display = "none");
+        document.getElementById(btn.dataset.tab).style.display = "block";
+      });
+    });
+  </script>
 </body>
 </html>

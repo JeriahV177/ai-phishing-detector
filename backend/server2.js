@@ -5,6 +5,8 @@ import multer from "multer";
 import Tesseract from "tesseract.js";
 import fetch from "node-fetch";
 import fs from "fs";
+import Jimp from "jimp";
+import jsQR from "jsqr";
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
@@ -12,7 +14,7 @@ const upload = multer({ dest: "uploads/" });
 app.use(cors());
 app.use(bodyParser.json({ limit: "10mb" }));
 
-// --- Feature extraction for basic phishing detection ---
+// --- Feature extraction ---
 function extractFeatures(text) {
   const suspiciousWords = ["urgent", "verify", "account", "password", "suspended", "click", "login"];
   const links = [...text.matchAll(/https?:\/\/[^\s]+/g)].map(m => m[0]);
@@ -24,15 +26,15 @@ function extractFeatures(text) {
   };
 }
 
-// --- Use local Ollama for text classification ---
+// --- Ollama text classification ---
 async function getOllamaVerdict(text) {
   try {
     const response = await fetch("http://127.0.0.1:11434/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3", // Change this to your local model name
-        prompt: `You are a phishing detector. Given the following message or URL, classify it as "Phishing" or "Safe" and briefly explain why.\n\nMessage:\n${text}\n\nRespond in the format:\nLabel: <Phishing|Safe>\nReason: <short reason>`,
+        model: "llama3",
+        prompt: `You are a phishing detector. Classify this as "Phishing" or "Safe" and briefly explain.\n\nMessage:\n${text}\n\nRespond in format:\nLabel: <Phishing|Safe>\nReason: <short reason>`,
         stream: false,
       }),
     });
@@ -52,17 +54,15 @@ async function getOllamaVerdict(text) {
   }
 }
 
-// --- TEXT CLASSIFICATION ENDPOINT ---
+// --- Text / URL Classification ---
 app.post("/api/classify", async (req, res) => {
   try {
     const { text = "", url = "" } = req.body;
     const input = (text || url || "").trim();
-
     if (!input) return res.status(400).json({ error: "No text or URL provided." });
 
     const features = extractFeatures(input);
     const baseScore = Math.min(5, features.suspicious_words + features.num_links * 2 + 1);
-
     const ollamaRes = await getOllamaVerdict(input);
 
     res.json({
@@ -81,7 +81,7 @@ app.post("/api/classify", async (req, res) => {
   }
 });
 
-// --- IMAGE CLASSIFICATION ENDPOINT (OCR + LLM) ---
+// --- OCR / Image Classification ---
 app.post("/api/classify-image", upload.single("image"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No image uploaded." });
@@ -89,7 +89,7 @@ app.post("/api/classify-image", upload.single("image"), async (req, res) => {
     console.log("Performing OCR on:", req.file.path);
     const result = await Tesseract.recognize(req.file.path, "eng");
     const extractedText = result.data.text.trim();
-    fs.unlinkSync(req.file.path); // delete temp file
+    fs.unlinkSync(req.file.path);
 
     if (!extractedText) {
       return res.json({ label: "Safe", score: 1, reasons: ["No readable text found."], highlights: [] });
@@ -113,6 +113,44 @@ app.post("/api/classify-image", upload.single("image"), async (req, res) => {
     });
   } catch (err) {
     console.error("Image classify error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// --- QR Code Detection ---
+app.post("/api/classify-qr", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No image uploaded." });
+
+    const image = await Jimp.read(req.file.path);
+    const { width, height } = image.bitmap;
+    const imageData = new Uint8ClampedArray(image.bitmap.data);
+
+    const code = jsQR(imageData, width, height);
+    fs.unlinkSync(req.file.path);
+
+    if (code) {
+      const features = extractFeatures(code.data);
+      const ollamaRes = await getOllamaVerdict(code.data);
+      const score = Math.min(5, features.suspicious_words + features.num_links * 2 + 1);
+
+      res.json({
+        label: ollamaRes.label,
+        score,
+        reasons: [
+          "QR code detected.",
+          `Feature-based: ${features.suspicious_words} suspicious words, ${features.num_links} links.`,
+          `LLM verdict: ${ollamaRes.reason}`,
+        ],
+        extracted_text: code.data,
+        urls: features.links.map(u => ({ url: u, verdict: "unknown" })),
+        highlights: [],
+      });
+    } else {
+      res.json({ label: "Safe", score: 1, reasons: ["No QR code detected."], extracted_text: "", urls: [], highlights: [] });
+    }
+  } catch (err) {
+    console.error("QR classify error:", err);
     res.status(500).json({ error: "Internal server error." });
   }
 });
