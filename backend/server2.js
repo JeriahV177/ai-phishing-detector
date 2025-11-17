@@ -7,6 +7,13 @@ import fetch from "node-fetch";
 import fs from "fs";
 import Jimp from "jimp";
 import jsQR from "jsqr";
+import { spawn } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// For __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
@@ -24,6 +31,37 @@ function extractFeatures(text) {
     num_links: links.length,
     links,
   };
+}
+
+// --- Local Whisper transcription via Python ---
+async function transcribeAudio(filePath) {
+  return new Promise((resolve, reject) => {
+    const scriptPath = path.join(__dirname, "whisper_local.py");
+
+    const py = spawn("python", [scriptPath, filePath], {
+      cwd: __dirname,
+    });
+
+    let output = "";
+    let errOutput = "";
+
+    py.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    py.stderr.on("data", (data) => {
+      errOutput += data.toString();
+    });
+
+    py.on("close", (code) => {
+      if (code === 0) {
+        resolve(output.trim());
+      } else {
+        console.error("Local Whisper error:", errOutput);
+        reject(new Error("Local Whisper transcription failed"));
+      }
+    });
+  });
 }
 
 // --- Ollama text classification ---
@@ -154,6 +192,62 @@ app.post("/api/classify-qr", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 });
+
+// --- Audio / Vishing Classification ---
+app.post("/api/classify-audio", upload.single("audio"), async (req, res) => {
+  let filePath;
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file uploaded." });
+    }
+
+    filePath = req.file.path;
+
+    // 1) Transcribe audio using local Whisper
+    const transcript = await transcribeAudio(filePath);
+
+    if (!transcript) {
+      return res.json({
+        label: "Safe",
+        score: 1,
+        reasons: ["No speech detected in audio."],
+        transcript: "",
+        urls: [],
+        highlights: [],
+      });
+    }
+
+    // 2) Extract features and get LLM verdict (same logic as text)
+    const features = extractFeatures(transcript);
+    const verdict = await getOllamaVerdict(transcript);
+
+    const scoreBase = Math.min(
+      5,
+      features.suspicious_words + features.num_links * 2 + 1
+    );
+
+    res.json({
+      label: verdict.label,
+      score: scoreBase,
+      reasons: [
+        "Transcribed audio with local Whisper.",
+        `Feature-based: ${features.suspicious_words} suspicious words, ${features.num_links} links.`,
+        `LLM verdict: ${verdict.reason}`,
+      ],
+      transcript,
+      urls: features.links.map((u) => ({ url: u, verdict: "unknown" })),
+      highlights: features.links,
+    });
+  } catch (err) {
+    console.error("Audio classify error:", err);
+    res.status(500).json({ error: "Error analyzing audio." });
+  } finally {
+    if (filePath) {
+      fs.unlink(filePath, () => {});
+    }
+  }
+});
+
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`✅ Server running on http://127.0.0.1:${PORT}`));

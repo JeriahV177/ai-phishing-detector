@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +17,9 @@
       --safe: #46e29a;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -35,8 +38,8 @@
       background: var(--bg-card);
       border-radius: 16px;
       padding: 32px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.6);
-      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     h1 {
@@ -46,9 +49,16 @@
       margin-bottom: 8px;
     }
 
-    h2, h3 { color: var(--accent2); margin-top: 32px; }
+    h2,
+    h3 {
+      color: var(--accent2);
+      margin-top: 32px;
+    }
 
-    p.muted { color: #aaa; font-size: 0.9rem; }
+    p.muted {
+      color: #aaa;
+      font-size: 0.9rem;
+    }
 
     .tabs {
       display: flex;
@@ -69,7 +79,10 @@
       transition: background-color 0.2s;
     }
 
-    .tab-button:hover { background-color: #475569; }
+    .tab-button:hover {
+      background-color: #475569;
+    }
+
     .tab-button.active {
       background-color: var(--accent);
       color: var(--bg-dark);
@@ -83,10 +96,13 @@
       padding: 2rem;
       margin-top: 2rem;
       width: 100%;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
     }
 
-    textarea, input[type=url], input[type=file], input[type=text] {
+    textarea,
+    input[type=url],
+    input[type=file],
+    input[type=text] {
       width: 100%;
       padding: 12px 14px;
       border-radius: 8px;
@@ -153,6 +169,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Harpoon 🪝</h1>
@@ -163,6 +180,7 @@
       <button class="tab-button active" data-tab="text">📝 Text / URL</button>
       <button class="tab-button" data-tab="ocr">🖼️ OCR Image</button>
       <button class="tab-button" data-tab="qr">🔳 QR Code</button>
+      <button class="tab-button" data-tab="audio">🎤 Voicemail</button>
     </div>
 
     <!-- TEXT TAB -->
@@ -204,6 +222,20 @@
       <div id="qr-preview" class="preview"></div>
     </div>
 
+    <!-- AUDIO / VISHING TAB -->
+    <div id="audio" class="tab-content">
+      <h2>Voicemail Audio Analysis</h2>
+      <form id="audio-form" action="javascript:void(0);" onsubmit="return false;">
+        <input type="file" id="audio-input" accept="audio/*" />
+        <button type="submit">Analyze Audio</button>
+      </form>
+      <audio id="audio-player" controls style="margin-top: 1rem; width: 100%; display: none;"></audio>
+      <h3>Transcript</h3>
+      <div id="audio-transcript" class="result-box"></div>
+      <h3>Analysis Result</h3>
+      <div id="audio-result" class="result-box"></div>
+    </div>
+
     <footer>© 2025 Harpoon AI | Detecting the bait before it hooks you 🪝</footer>
   </div>
 
@@ -223,4 +255,5 @@
     });
   </script>
 </body>
+
 </html>

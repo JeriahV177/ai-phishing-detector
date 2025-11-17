@@ -2,11 +2,13 @@
   "dependencies": {
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jimp": "^0.16.1",
     "jsqr": "^1.4.0",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "openai": "^6.9.0",
     "qrcode-reader": "^1.0.4",
     "tesseract.js": "^6.0.1"
   },

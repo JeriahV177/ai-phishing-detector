@@ -16,6 +16,12 @@ const qrPreviewImg = document.getElementById("qr-preview-img");
 const qrResult = document.getElementById("qr-result");
 const qrPreview = document.getElementById("qr-preview");
 
+const audioForm = document.getElementById("audio-form");
+const audioInput = document.getElementById("audio-input");
+const audioTranscript = document.getElementById("audio-transcript");
+const audioResult = document.getElementById("audio-result");
+const audioPlayer = document.getElementById("audio-player");
+
 // --- Helpers ---
 function showLoading(el, message = "Analyzing...") {
   el.textContent = message;
@@ -134,3 +140,76 @@ qrForm.addEventListener("submit", async (e) => {
     qrResult.textContent = "Error analyzing QR code.";
   }
 });
+
+// --- Audio / Vishing Form Submission ---
+audioForm.addEventListener("submit", async (e) => {
+  console.log("Audio form submitted handler running");
+  console.log("Event target id:", e.target.id);
+  e.preventDefault(); // HARD stop default submit
+
+  const file = audioInput.files[0];
+  if (!file) {
+    alert("Please select an audio file");
+    return;
+  }
+
+  audioTranscript.textContent = "Transcribing...";
+  audioResult.textContent = "Analyzing...";
+
+  const formData = new FormData();
+  formData.append("audio", file);
+
+  try {
+    const res = await fetch("http://localhost:5000/api/classify-audio", {
+      method: "POST",
+      body: formData,
+    });
+
+    console.log("Audio fetch response status:", res.status);
+
+    const data = await res.json();
+    console.log("Audio response JSON:", data);
+
+    if (data.error) {
+      audioResult.textContent = "Error: " + data.error;
+      return;
+    }
+
+    audioTranscript.textContent = data.transcript || "(no transcript)";
+
+    audioResult.innerHTML = `
+      <strong>Label:</strong> ${data.label}<br>
+      <strong>Score:</strong> ${data.score}<br>
+      <strong>Reasons:</strong><br>
+      ${data.reasons.map((r) => "- " + r).join("<br>")}
+    `;
+  } catch (err) {
+    console.error("Audio handler error:", err);
+    audioTranscript.textContent = "";
+    audioResult.textContent = "Error analyzing audio.";
+  }
+});
+
+audioInput.addEventListener("change", () => {
+  const file = audioInput.files[0];
+
+  if (!file) {
+    // Hide player if no file selected
+    audioPlayer.pause();
+    audioPlayer.removeAttribute("src");
+    audioPlayer.style.display = "none";
+    return;
+  }
+
+  // Optional: clean up previous object URL
+  if (audioPlayer.dataset.objectUrl) {
+    URL.revokeObjectURL(audioPlayer.dataset.objectUrl);
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  audioPlayer.src = objectUrl;
+  audioPlayer.dataset.objectUrl = objectUrl;
+  audioPlayer.style.display = "block";
+  audioPlayer.load();
+});
+
