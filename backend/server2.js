@@ -10,6 +10,8 @@ import jsQR from "jsqr";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { getEmbedding } from "./embedding.js";
 
 // For __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +22,10 @@ const upload = multer({ dest: "uploads/" });
 
 app.use(cors());
 app.use(bodyParser.json({ limit: "10mb" }));
+
+// --- Qdrant Setup (NEW) ---
+const qdrant = new QdrantClient({ url: "http://localhost:6333" });
+const COLLECTION_NAME = "phishtank";
 
 // --- Feature extraction ---
 function extractFeatures(text) {
@@ -64,6 +70,43 @@ async function transcribeAudio(filePath) {
   });
 }
 
+// --- Ollama LLM explanation for Embedding (NEW) ---
+async function getOllamaExplanation(text, similarExamples = []) {
+  try {
+    const context = similarExamples.length
+      ? `Similar known phishing urls:\n${similarExamples.join("\n")}\n\n`
+      : "";
+    const prompt = `${context}Classify this message as "Phishing" or "Safe" and briefly explain.\n\nMessage:\n${text}\n\nRespond in format:\nLabel: <Phishing|Safe>\nReason: <short reason>`;
+
+    console.log("Sending request to Ollama...");
+    console.log("Prompt length:", prompt.length);
+    const response = await fetch("http://127.0.0.1:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3",
+        prompt,
+        stream: false,
+      }),
+    });
+
+    const data = await response.json(); 
+    console.log("Ollama raw response:", JSON.stringify(data, null, 2));
+
+    const output = data.response || "";
+    const labelMatch = output.match(/Label:\s*(Phishing|Safe)/i);
+    const reasonMatch = output.match(/Reason:\s*(.+)/i);
+
+    return {
+      label: labelMatch ? labelMatch[1] : "Safe",
+      reason: reasonMatch ? reasonMatch[1] : "No reason provided.",
+    };
+  } catch (err) {
+    console.error("Ollama explanation failed:", err);
+    return { label: "Safe", reason: "Ollama unavailable." };
+  }
+}
+
 // --- Ollama text classification ---
 async function getOllamaVerdict(text) {
   try {
@@ -92,7 +135,90 @@ async function getOllamaVerdict(text) {
   }
 }
 
-// --- Text / URL Classification ---
+
+// --- Text / URL Classification (Embedding + LLM Explanation for Suspicious & Phishing) ---
+app.post("/api/classify", async (req, res) => {
+  try {
+    const { text = "", url = "" } = req.body;
+    const input = (text || url || "").trim();
+    console.log("🔍 Incoming text:", input);
+
+    if (!input) {
+      console.log("❌ No input received");
+      return res.status(400).json({ error: "No text or URL provided." });
+    }
+
+    // --- Generate embedding ---
+    console.log("✳ Generating embedding...");
+    const embedding = await getEmbedding(input);
+    console.log("Embedding length:", embedding?.length);
+
+    if (!embedding) {
+      console.log("❌ Embedding failed");
+      return res.status(500).json({ error: "Failed to generate embedding." });
+    }
+
+    // --- Qdrant Search ---
+    console.log("🔎 Searching Qdrant...");
+
+    const response = await fetch(`http://localhost:6333/collections/${COLLECTION_NAME}/points/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vector: embedding,
+        limit: 5,
+        with_payload: true,
+      }),
+    });
+
+    const json = await response.json();
+    console.log("Qdrant search response:", json);
+
+    const searchResult = json.result || [];
+
+    let similarExamples = [];
+    let similarityScore = 0;
+    
+    console.log("Search results found:", searchResult.length);
+    if (searchResult.length > 0) {
+      similarExamples = searchResult.map(r => r.payload?.text || "");
+      similarityScore = searchResult[0].score; // highest similarity
+    }
+
+    // --- Tiered classification based on similarity ---
+    let label = "Safe";
+    let reason = "No significant similarity to known phishing messages.";
+
+    if (similarityScore >= 0.35) {
+      // Medium or high similarity → Suspicious or Phishing
+      label = similarityScore >= 0.7 ? "Phishing" : "Suspicious";
+    }
+    
+      // --- Call LLM for explanation ---
+      let ollamaReason = "";
+      try {
+        const ollamaRes = await getOllamaExplanation(input, similarExamples);
+        ollamaReason = ollamaRes.reason;
+      } catch (err) {
+        console.error("LLM explanation failed:", err);
+        ollamaReason = "LLM explanation failed";
+      }
+
+    res.json({
+      label,
+      similarity_score: similarityScore.toFixed(2),
+      similar_examples: similarExamples,
+      llm_reason: ollamaReason,
+    });
+  } catch (err) {
+    console.error("Text classify error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+/*
+// OLD TEXT CLASSIFICATION
+ // --- Text / URL Classification ---
 app.post("/api/classify", async (req, res) => {
   try {
     const { text = "", url = "" } = req.body;
@@ -117,7 +243,7 @@ app.post("/api/classify", async (req, res) => {
     console.error("Text classify error:", err);
     res.status(500).json({ error: "Internal server error." });
   }
-});
+}); */
 
 // --- OCR / Image Classification ---
 app.post("/api/classify-image", upload.single("image"), async (req, res) => {
@@ -153,7 +279,7 @@ app.post("/api/classify-image", upload.single("image"), async (req, res) => {
     console.error("Image classify error:", err);
     res.status(500).json({ error: "Internal server error." });
   }
-});
+}); 
 
 // --- QR Code Detection ---
 app.post("/api/classify-qr", upload.single("image"), async (req, res) => {
