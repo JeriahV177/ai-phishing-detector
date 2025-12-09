@@ -181,6 +181,7 @@
       <button class="tab-button" data-tab="ocr">🖼️ OCR Image</button>
       <button class="tab-button" data-tab="qr">🔳 QR Code</button>
       <button class="tab-button" data-tab="audio">🎤 Voicemail</button>
+      <button class="tab-button" data-tab="history">🗂️ Past Scans</button>
     </div>
 
     <!-- TEXT TAB -->
@@ -235,6 +236,18 @@
       <h3>Analysis Result</h3>
       <div id="audio-result" class="result-box"></div>
     </div>
+
+    <!-- HISTORY TAB -->
+    <div id="history" class="tab-content">
+      <h2>Past Scans</h2>
+      <p class="muted">Scans are stored only on this device (no login needed). Clearing browser data removes them.</p>
+      <div style="display:flex; gap:8px; margin: 10px 0 16px;">
+        <button id="refresh-history">Refresh</button>
+        <button id="clear-history" style="background:#ef4444;">Clear History</button>
+      </div>
+      <div id="history-list" class="result-box" style="background:#0b0f15;"></div>
+    </div>
+
 
     <footer>© 2025 Harpoon AI | Detecting the bait before it hooks you 🪝</footer>
   </div>
