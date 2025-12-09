@@ -53,6 +53,129 @@ function displayQRResult(result, el, previewEl) {
   el.innerHTML = html;
 }
 
+function deleteScanById(id) {
+  const scans = loadHistory().filter(s => s.id !== id);
+  saveHistory(scans);
+  renderHistory();
+}
+
+function dataURLtoBlob(dataURL) {
+  const [meta, b64] = dataURL.split(",");
+  const mime = (meta.match(/data:(.*?);base64/) || [])[1] || "application/octet-stream";
+  const bin = atob(b64);
+  const len = bin.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+
+function activateTab(tabId) {
+  const btn = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+  if (btn) btn.click(); // uses your existing tab-switch handler in index.html
+}
+
+async function rerunScan(id) {
+  const scans = loadHistory();
+  const s = scans.find(x => x.id === id);
+  if (!s) return alert("Scan not found.");
+
+  try {
+    // ---------- TEXT / URL ----------
+    if (s.type === "text") {
+      activateTab("text");
+      textInput.value = s.input?.text || "";
+
+      if (typeof textForm.requestSubmit === "function") {
+        textForm.requestSubmit();
+      } else {
+        textForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+      return;
+    }
+
+    // For image/QR/audio we need the original file.
+    if (!s.input?.dataURL) {
+      // Navigate to the relevant tab and tell user to re-upload.
+      const tabMap = { ocr: "ocr", qr: "qr", audio: "audio" };
+      if (tabMap[s.type]) activateTab(tabMap[s.type]);
+      alert("Original file wasn’t stored (too large). Please re-upload it on this tab to re-run.");
+      return;
+    }
+
+    // Convert stored dataURL back to a File so the normal form handler can use it.
+    const blob = dataURLtoBlob(s.input.dataURL);
+    const fileName = s.input?.name || {
+      ocr: "image.png",
+      qr: "qr.png",
+      audio: "audio.wav",
+    }[s.type] || "file.bin";
+    const file = new File([blob], fileName, { type: blob.type || blob.mime || "application/octet-stream" });
+
+    const dt = new DataTransfer();
+    dt.items.add(file);
+
+    // ---------- OCR IMAGE ----------
+    if (s.type === "ocr") {
+      activateTab("ocr");
+      imageInput.files = dt.files;
+      previewImg.src = URL.createObjectURL(file);
+      ocrPreview.textContent = "";
+
+      if (typeof imageForm.requestSubmit === "function") {
+        imageForm.requestSubmit();
+      } else {
+        imageForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+      return;
+    }
+
+    // ---------- QR CODE ----------
+    if (s.type === "qr") {
+      activateTab("qr");
+      qrInput.files = dt.files;
+      qrPreviewImg.src = URL.createObjectURL(file);
+      qrPreview.textContent = "";
+
+      if (typeof qrForm.requestSubmit === "function") {
+        qrForm.requestSubmit();
+      } else {
+        qrForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+      return;
+    }
+
+    // ---------- AUDIO / VISHING ----------
+    if (s.type === "audio") {
+      activateTab("audio");
+      audioInput.files = dt.files;
+
+      // update audio player preview
+      if (audioPlayer.dataset.objectUrl) {
+        URL.revokeObjectURL(audioPlayer.dataset.objectUrl);
+      }
+      const url = URL.createObjectURL(file);
+      audioPlayer.src = url;
+      audioPlayer.dataset.objectUrl = url;
+      audioPlayer.style.display = "block";
+      audioPlayer.load();
+
+      if (typeof audioForm.requestSubmit === "function") {
+        audioForm.requestSubmit();
+      } else {
+        audioForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+      return;
+    }
+
+    alert("Unsupported type for re-run.");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to re-run this scan.");
+  }
+}
+
+
+
 // --- Preview Handlers ---
 imageInput.addEventListener("change", () => {
   const file = imageInput.files[0];
@@ -334,6 +457,10 @@ function renderHistory() {
           <div><span style="opacity:.9">Label:</span> <strong>${s.label}</strong></div>
           <div><span style="opacity:.9">Score:</span> <strong>${s.score}</strong></div>
         </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn-rerun" data-id="${s.id}">Re-run</button>
+          <button class="btn-delete" data-id="${s.id}" style="background:#ef4444;">Delete</button>
+        </div>
     `;
 
     // Input preview
@@ -413,6 +540,18 @@ historyTabButtons.forEach(btn => {
     }
   });
 });
+
+document.getElementById("history-list").addEventListener("click", (e) => {
+  const tgt = e.target;
+  if (tgt.classList.contains("btn-delete")) {
+    const id = tgt.getAttribute("data-id");
+    deleteScanById(id);
+  } else if (tgt.classList.contains("btn-rerun")) {
+    const id = tgt.getAttribute("data-id");
+    rerunScan(id);
+  }
+});
+
 
 
 
