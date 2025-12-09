@@ -72,7 +72,7 @@ async function getOllamaVerdict(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "llama3",
-        prompt: `You are a phishing detector. Classify this as "Phishing" or "Safe" and briefly explain.\n\nMessage:\n${text}\n\nRespond in format:\nLabel: <Phishing|Safe>\nReason: <short reason>`,
+        prompt: `You are a phishing detector. First, analyze the email text normally and determine if it contains phishing indicators such as urgency, generic language, or suspicious instructions. Then, check any URLs or QR codes mentioned: if the email claims a link is for a specific company or service but the actual link points to a domain inconsistent with that claim, consider this suspicious and include it in your reasoning. Classify as "Phishing" or "Safe" and provide a concise reason mentioning both the textual analysis and any mismatched URLs. Message: ${text} Respond in format: Label: <Phishing|Safe> Reason: <short reason>`,
         stream: false,
       }),
     });
@@ -120,32 +120,55 @@ app.post("/api/classify", async (req, res) => {
 });
 
 // --- OCR / Image Classification ---
+// --- OCR + QR Code / Image Classification ---
 app.post("/api/classify-image", upload.single("image"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No image uploaded." });
 
+    // 1) OCR with Tesseract
     console.log("Performing OCR on:", req.file.path);
-    const result = await Tesseract.recognize(req.file.path, "eng");
-    const extractedText = result.data.text.trim();
+    const ocrResult = await Tesseract.recognize(req.file.path, "eng");
+    let ocrText = ocrResult.data.text.trim();
+
+    // 2) QR code scan with jsQR
+    const image = await Jimp.read(req.file.path);
+    const { width, height } = image.bitmap;
+    const imageData = new Uint8ClampedArray(image.bitmap.data);
+    const qrCode = jsQR(imageData, width, height);
+    const qrText = qrCode ? qrCode.data.trim() : "";
+
     fs.unlinkSync(req.file.path);
 
-    if (!extractedText) {
-      return res.json({ label: "Safe", score: 1, reasons: ["No readable text found."], highlights: [] });
+    // 3) Combine OCR and QR text for LLM analysis
+    const combinedText = [ocrText, qrText].filter(Boolean).join("\n");
+
+    if (!combinedText) {
+      return res.json({
+        label: "Safe",
+        score: 1,
+        reasons: ["No readable text or QR code detected."],
+        extracted_text: "",
+        urls: [],
+        highlights: [],
+      });
     }
 
-    const features = extractFeatures(extractedText);
-    const ollamaRes = await getOllamaVerdict(extractedText);
+    // 4) Extract features and get LLM verdict
+    const features = extractFeatures(combinedText);
+    const ollamaRes = await getOllamaVerdict(combinedText);
     const score = Math.min(5, features.suspicious_words + features.num_links * 2 + 1);
+
+    const reasons = [];
+    if (ocrText) reasons.push("OCR completed successfully.");
+    if (qrText) reasons.push("QR code detected.");
+    reasons.push(`Feature-based: ${features.suspicious_words} suspicious words, ${features.num_links} links.`);
+    reasons.push(`LLM verdict: ${ollamaRes.reason}`);
 
     res.json({
       label: ollamaRes.label,
       score,
-      reasons: [
-        "OCR completed successfully.",
-        `Feature-based: ${features.suspicious_words} suspicious words, ${features.num_links} links.`,
-        `LLM verdict: ${ollamaRes.reason}`,
-      ],
-      extracted_text: extractedText,
+      reasons,
+      extracted_text: combinedText,
       urls: features.links.map(u => ({ url: u, verdict: "unknown" })),
       highlights: [],
     });
@@ -154,6 +177,7 @@ app.post("/api/classify-image", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 });
+
 
 // --- QR Code Detection ---
 app.post("/api/classify-qr", upload.single("image"), async (req, res) => {

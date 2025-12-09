@@ -5,267 +5,507 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Harpoon 🪝 | AI Phishing Detector</title>
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #0b0c10;
-      --bg-card: #1f2833;
-      --accent: #66fcf1;
-      --accent2: #45a29e;
-      --text: #c5c6c7;
-      --danger: #ff5c5c;
+      --bg-card: #1f1f2e;
+      --accent: #00ffc6;
+      --accent2: #00d1b2;
+      --text: #e0e0e0;
+      --danger: #ff4d4d;
       --safe: #46e29a;
+      --hover-bg: #22232f;
+      --shadow: rgba(0, 0, 0, 0.6);
     }
 
     * {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      margin: 0;
-      font-family: "Inter", system-ui, sans-serif;
-      background: radial-gradient(circle at top left, #0b0c10, #000);
+      font-family: "Inter", sans-serif;
+      background: linear-gradient(135deg, #0b0c10 0%, #0f111a 100%);
       color: var(--text);
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: 40px 20px;
+      padding: 2rem 1rem;
     }
 
-    .container {
+    .app-container {
       width: 100%;
-      max-width: 900px;
+      max-width: 960px;
       background: var(--bg-card);
       border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2.5rem;
+      box-shadow: 0 10px 30px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
     }
 
-    h1 {
-      text-align: center;
-      color: var(--accent);
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 2rem;
       font-weight: 700;
-      margin-bottom: 8px;
+      color: var(--accent);
+      cursor: pointer;
     }
 
-    h2,
-    h3 {
+    nav {
+      position: relative;
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropbtn {
+      background-color: var(--hover-bg);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .dropbtn:hover {
+      background-color: var(--accent2);
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: var(--bg-card);
+      min-width: 180px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px var(--shadow);
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .dropdown-content button {
+      width: 100%;
+      text-align: left;
+      padding: 0.8rem 1rem;
+      border: none;
+      background: none;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    .dropdown-content button:hover {
+      background: var(--accent2);
+      color: var(--bg-dark);
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    main {
+      margin-top: 2rem;
+    }
+
+    .page {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Home Page */
+    .home-page {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .home-page h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
       color: var(--accent2);
-      margin-top: 32px;
     }
 
-    p.muted {
+    .home-page p {
+      font-size: 1rem;
+      color: #aaa;
+      margin-bottom: 2rem;
+    }
+
+    .home-page button {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      background: var(--accent2);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .home-page button:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* Feature Cards */
+    .feature-card {
+      flex: 1 1 200px;
+      max-width: 220px;
+      background: var(--hover-bg);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card h3 {
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
       color: #aaa;
       font-size: 0.9rem;
     }
 
-    .tabs {
+    .feature-card:hover {
+      background: var(--accent2);
+      color: #000;
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px var(--shadow);
+    }
+
+    /* Forms */
+    form {
       display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 1rem;
     }
 
-    .tab-button {
-      background-color: #334155;
-      border: none;
-      color: #f1f5f9;
-      padding: 0.6rem 1.2rem;
-      cursor: pointer;
-      font-weight: 500;
-      border-radius: 6px;
-      transition: background-color 0.2s;
-    }
-
-    .tab-button:hover {
-      background-color: #475569;
-    }
-
-    .tab-button.active {
-      background-color: var(--accent);
-      color: var(--bg-dark);
-      font-weight: 600;
-    }
-
-    .tab-content {
-      display: none;
-      background-color: var(--bg-card);
-      border-radius: 10px;
-      padding: 2rem;
-      margin-top: 2rem;
+    input[type="text"],
+    input[type="url"],
+    input[type="file"],
+    textarea {
       width: 100%;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-    }
-
-    textarea,
-    input[type=url],
-    input[type=file],
-    input[type=text] {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 8px;
+      padding: 1rem;
+      border-radius: 12px;
       border: 1px solid #333;
       background: #14181e;
       color: var(--text);
-      margin-top: 6px;
-      resize: vertical;
       font-size: 1rem;
+      resize: vertical;
+      transition: border 0.2s;
     }
 
-    button {
-      margin-top: 16px;
-      padding: 10px 20px;
-      border-radius: 8px;
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent2);
+      outline: none;
+    }
+
+    button.submit-btn {
+      padding: 0.9rem 1.5rem;
+      border-radius: 12px;
       border: none;
       font-size: 1rem;
       font-weight: 600;
       background: var(--accent2);
       color: #fff;
       cursor: pointer;
-      transition: 0.2s;
+      transition: all 0.2s ease;
     }
 
-    button:hover {
+    button.submit-btn:hover {
       background: var(--accent);
       color: #000;
-      box-shadow: 0 0 10px var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 0 12px var(--accent);
     }
 
-    .result-box {
-      background-color: #0d1117;
-      border: 1px solid #222;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 10px;
-      white-space: pre-wrap;
-      font-family: monospace;
-    }
-
+    /* Result Boxes */
+    .result-box,
     .preview {
       background: #14181e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 10px;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1rem;
       font-family: monospace;
       white-space: pre-wrap;
-      color: var(--text);
     }
 
     .preview img {
       max-width: 100%;
-      border-radius: 8px;
-      margin-top: 10px;
+      border-radius: 12px;
+      margin-top: 0.5rem;
       border: 2px solid var(--accent);
+    }
+
+    audio {
+      width: 100%;
+      border-radius: 12px;
+      margin-top: 0.5rem;
+    }
+
+    /* History */
+    .history-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .history-btn {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      font-size: 0.95rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent2);
+      color: #000;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .history-btn:hover {
+      background: var(--accent);
+      color: #000;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--accent);
+    }
+
+    .danger-btn {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .danger-btn:hover {
+      background: #ff2a2a;
+      box-shadow: 0 4px 12px var(--danger);
+      color: #fff;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      background: #14181e;
+      font-size: 0.95rem;
+    }
+
+    .history-item button {
+      margin-left: 0.5rem;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item button.rerun-btn {
+      background: var(--safe);
+      color: #000;
+    }
+
+    .history-item button.rerun-btn:hover {
+      background: #2cd88c;
+      box-shadow: 0 2px 8px var(--safe);
+    }
+
+    .history-item button.delete-btn {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .history-item button.delete-btn:hover {
+      background: #ff2a2a;
+      box-shadow: 0 2px 8px var(--danger);
     }
 
     footer {
       text-align: center;
       font-size: 0.85rem;
       color: #777;
-      margin-top: 40px;
+      margin-top: 3rem;
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Harpoon 🪝</h1>
-    <p class="muted" style="text-align:center; margin-top:0;">AI-Powered Phishing Detector</p>
+  <div class="app-container">
+    <header>
+      <h1 id="logo">Harpoon 🪝</h1>
+      <nav>
+        <div class="dropdown">
+          <button class="dropbtn">Features ▾</button>
+          <div class="dropdown-content">
+            <button data-page="text">Text / URL</button>
+            <button data-page="ocr">Image Scan</button>
+            <button data-page="qr">QR Code</button>
+            <button data-page="audio">Voicemail</button>
+            <button data-page="history">Past Scans</button>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-button active" data-tab="text">📝 Text / URL</button>
-      <button class="tab-button" data-tab="ocr">🖼️ OCR Image</button>
-      <button class="tab-button" data-tab="qr">🔳 QR Code</button>
-      <button class="tab-button" data-tab="audio">🎤 Voicemail</button>
-      <button class="tab-button" data-tab="history">🗂️ Past Scans</button>
-    </div>
+    <main>
+      <!-- Home Page -->
+      <div id="home" class="page active home-page">
+        <h2>Welcome to Harpoon 🪝</h2>
+        <p>Detect phishing attempts in text, images, QR codes, and voicemails using AI-powered analysis.</p>
 
-    <!-- TEXT TAB -->
-    <div id="text" class="tab-content" style="display:block;">
-      <h2>Text / URL Analysis</h2>
-      <form id="text-form">
-        <textarea id="text-input" rows="5" placeholder="Paste message or URL here..."></textarea>
-        <button type="submit">Analyze</button>
-      </form>
-      <div id="text-result" class="result-box"></div>
-      <div id="text-preview" class="preview"></div>
-    </div>
+        <div style="display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center; margin-top:2rem;">
+          <div class="feature-card" onclick="showPage('text')">
+            <h3>📝 Text / URL</h3>
+            <p>Analyze messages or URLs for suspicious patterns.</p>
+          </div>
+          <div class="feature-card" onclick="showPage('ocr')">
+            <h3>🖼 Image OCR</h3>
+            <p>Extract text and scan QR codes from images.</p>
+          </div>
+          <div class="feature-card" onclick="showPage('qr')">
+            <h3>📷 QR Scan</h3>
+            <p>Detect and decode QR codes safely.</p>
+          </div>
+          <div class="feature-card" onclick="showPage('audio')">
+            <h3>🎧 Voicemail</h3>
+            <p>Analyze audio messages for potential phishing attempts.</p>
+          </div>
+        </div>
 
-    <!-- OCR IMAGE TAB -->
-    <div id="ocr" class="tab-content">
-      <h2>OCR Image Analysis</h2>
-      <form id="image-form">
-        <input type="file" id="image-input" accept="image/*" />
-        <button type="submit">Analyze Image</button>
-      </form>
-      <div class="preview">
-        <img id="preview-img" src="" alt="No image selected" />
+        <div style="margin-top:3rem; text-align:center;">
+          <h3 style="color:var(--accent2)">How it works</h3>
+          <ol style="margin-top:1rem; color:#aaa; font-size:0.95rem; text-align:left; max-width:500px; margin-left:auto; margin-right:auto; line-height:1.6;">
+            <li>Upload text, image, QR code, or audio.</li>
+            <li>AI analyzes for phishing indicators.</li>
+            <li>View results instantly with risk score.</li>
+            <li>Keep or clear history as needed.</li>
+          </ol>
+        </div>
+
+        <button id="start-btn" style="margin-top:2rem; font-size:1.2rem; padding:1rem 2rem;">Get Started</button>
       </div>
-      <div id="image-result" class="result-box"></div>
-      <div id="ocr-preview" class="preview"></div>
-    </div>
 
-    <!-- QR CODE TAB -->
-    <div id="qr" class="tab-content">
-      <h2>QR Code Analysis</h2>
-      <form id="qr-form">
-        <input type="file" id="qr-input" accept="image/*" />
-        <button type="submit">Analyze QR</button>
-      </form>
-      <div class="preview">
-        <img id="qr-preview-img" src="" alt="No image selected" />
+      <!-- TEXT -->
+      <div id="text" class="page">
+        <h2>Text / URL Analysis</h2>
+        <form id="text-form">
+          <textarea id="text-input" rows="5" placeholder="Paste message or URL here..."></textarea>
+          <button type="submit" class="submit-btn">Analyze</button>
+        </form>
+        <div id="text-result" class="result-box"></div>
+        <div id="text-preview" class="preview"></div>
       </div>
-      <div id="qr-result" class="result-box"></div>
-      <div id="qr-preview" class="preview"></div>
-    </div>
 
-    <!-- AUDIO / VISHING TAB -->
-    <div id="audio" class="tab-content">
-      <h2>Voicemail Audio Analysis</h2>
-      <form id="audio-form" action="javascript:void(0);" onsubmit="return false;">
-        <input type="file" id="audio-input" accept="audio/*" />
-        <button type="submit">Analyze Audio</button>
-      </form>
-      <audio id="audio-player" controls style="margin-top: 1rem; width: 100%; display: none;"></audio>
-      <h3>Transcript</h3>
-      <div id="audio-transcript" class="result-box"></div>
-      <h3>Analysis Result</h3>
-      <div id="audio-result" class="result-box"></div>
-    </div>
-
-    <!-- HISTORY TAB -->
-    <div id="history" class="tab-content">
-      <h2>Past Scans</h2>
-      <p class="muted">Scans are stored only on this device (no login needed). Clearing browser data removes them.</p>
-      <div style="display:flex; gap:8px; margin: 10px 0 16px;">
-        <button id="refresh-history">Refresh</button>
-        <button id="clear-history" style="background:#ef4444;">Clear History</button>
+      <!-- OCR IMAGE -->
+      <div id="ocr" class="page">
+        <h2>OCR Image Analysis with QR Detection</h2>
+        <form id="image-form">
+          <input type="file" id="image-input" accept="image/*" />
+          <button type="submit" class="submit-btn">Analyze Image</button>
+        </form>
+        <div class="preview">
+          <img id="preview-img" src="" alt="No image selected" />
+        </div>
+        <div id="image-result" class="result-box"></div>
+        <div id="ocr-preview" class="preview"></div>
       </div>
-      <div id="history-list" class="result-box" style="background:#0b0f15;"></div>
-    </div>
 
+      <!-- QR CODE -->
+      <div id="qr" class="page">
+        <h2>QR Code Analysis</h2>
+        <form id="qr-form">
+          <input type="file" id="qr-input" accept="image/*" />
+          <button type="submit" class="submit-btn">Analyze QR</button>
+        </form>
+        <div class="preview">
+          <img id="qr-preview-img" src="" alt="No image selected" />
+        </div>
+        <div id="qr-result" class="result-box"></div>
+        <div id="qr-preview" class="preview"></div>
+      </div>
+
+      <!-- AUDIO -->
+      <div id="audio" class="page">
+        <h2>Voicemail Audio Analysis</h2>
+        <form id="audio-form">
+          <input type="file" id="audio-input" accept="audio/*" />
+          <button type="submit" class="submit-btn">Analyze Audio</button>
+        </form>
+        <audio id="audio-player" controls style="display:none;"></audio>
+        <h3>Transcript</h3>
+        <div id="audio-transcript" class="result-box"></div>
+        <h3>Analysis Result</h3>
+        <div id="audio-result" class="result-box"></div>
+      </div>
+
+      <!-- HISTORY -->
+      <div id="history" class="page">
+        <h2>Past Scans</h2>
+        <p class="subtitle">Scans are stored only on this device (no login needed). Clearing browser data removes them.</p>
+        <div class="history-controls">
+          <button id="refresh-history" class="history-btn">🔄 Refresh</button>
+          <button id="clear-history" class="history-btn danger-btn">🗑 Clear History</button>
+        </div>
+        <div id="history-list" class="result-box"></div>
+      </div>
+    </main>
 
     <footer>© 2025 Harpoon AI | Detecting the bait before it hooks you 🪝</footer>
   </div>
 
   <script src="script.js"></script>
   <script>
-    // --- Tab switching ---
-    const tabButtons = document.querySelectorAll(".tab-button");
-    const tabContents = document.querySelectorAll(".tab-content");
+    // --- Page switching ---
+    const pageButtons = document.querySelectorAll('.dropdown-content button');
+    const pages = document.querySelectorAll('.page');
+    const startBtn = document.getElementById('start-btn');
 
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        tabButtons.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        tabContents.forEach(tc => tc.style.display = "none");
-        document.getElementById(btn.dataset.tab).style.display = "block";
-      });
+    function showPage(id) {
+      pages.forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      renderHistory();
+    }
+
+    pageButtons.forEach(btn => {
+      btn.addEventListener('click', () => showPage(btn.dataset.page));
     });
+
+    startBtn.addEventListener('click', () => showPage('text'));
   </script>
 </body>
 

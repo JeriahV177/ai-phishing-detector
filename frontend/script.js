@@ -72,6 +72,7 @@ function dataURLtoBlob(dataURL) {
 function activateTab(tabId) {
   const btn = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
   if (btn) btn.click(); // uses your existing tab-switch handler in index.html
+  showPage(tabId);
 }
 
 async function rerunScan(id) {
@@ -225,6 +226,10 @@ textForm.addEventListener("submit", async (e) => {
   }
 });
 
+const logo = document.getElementById('logo');
+logo.addEventListener('click', () => showPage('home'));
+
+
 // --- OCR Image Form Submission ---
 imageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -242,22 +247,34 @@ imageForm.addEventListener("submit", async (e) => {
       body: formData,
     });
     const data = await res.json();
-    if (data.error) imageResult.textContent = `Error: ${data.error}`;
-    else displayTextResult(data, imageResult, ocrPreview);
-    const imgStore = await fileToDataURLCapped(imageInput.files[0]); // might be large
+    if (data.error) {
+      imageResult.textContent = `Error: ${data.error}`;
+    } else {
+      // Display both OCR and QR payload in preview
+      let combinedPreview = data.extracted_text || "";
+      if (data.qr_payload && !combinedPreview.includes(data.qr_payload)) {
+        combinedPreview += `\n[QR payload]: ${data.qr_payload}`;
+      }
+      ocrPreview.textContent = combinedPreview;
+
+      displayTextResult(data, imageResult, ocrPreview);
+    }
+
+    const imgStore = await fileToDataURLCapped(file);
     await addScanToHistory({
       id: crypto.randomUUID(),
-      type: "ocr",
+      type: "ocr", // now includes QR if present
       timestamp: Date.now(),
       label: data.label,
       score: data.score,
       reasons: data.reasons || [],
       input: {
         kind: "image",
-        name: imageInput.files[0]?.name || "image",
-        ...(imgStore.ok ? { dataURL: imgStore.dataURL } : {})
+        name: file.name,
+        ...(imgStore.ok ? { dataURL: imgStore.dataURL } : {}),
       },
-      extracted_text: data.extracted_text || ""
+      extracted_text: data.extracted_text || "",
+      qr_payload: data.qr_payload || "",
     });
 
   } catch (err) {
@@ -265,6 +282,7 @@ imageForm.addEventListener("submit", async (e) => {
     imageResult.textContent = "Error analyzing image.";
   }
 });
+
 
 // --- QR Code Form Submission ---
 qrForm.addEventListener("submit", async (e) => {
@@ -531,15 +549,18 @@ document.getElementById("clear-history").addEventListener("click", () => {
 });
 
 // Hook into your tab switching so that entering the History tab renders fresh
-const historyTabButtons = document.querySelectorAll(".tab-button");
-historyTabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const tab = btn.getAttribute("data-tab");
-    if (tab === "history") {
-      renderHistory();
+document.querySelectorAll(".tab-button").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    const button = e.target.closest(".tab-button");
+    if (!button) return;
+
+    const tab = button.dataset.tab; // safer than getAttribute
+    if (tab && tab.toLowerCase() === "history") {
+      renderHistory(); // refresh history whenever History tab is clicked
     }
   });
 });
+
 
 document.getElementById("history-list").addEventListener("click", (e) => {
   const tgt = e.target;
@@ -552,6 +573,7 @@ document.getElementById("history-list").addEventListener("click", (e) => {
   }
 });
 
+renderHistory();
 
 
 
